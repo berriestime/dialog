@@ -235,13 +235,17 @@ export async function deleteNotification(
   credentials: Credentials,
   receiptId: number,
   signal: AbortSignal,
-): Promise<void> {
+): Promise<boolean> {
   const data = await request(credentials, 'deleteNotification', undefined, {
     signal,
     httpMethod: 'DELETE',
     suffix: `/${receiptId}`,
   });
-  if (!isRecord(data) || data.result !== true) {
-    throw new Error('Не удалось подтвердить обработку уведомления.');
+  if (!isRecord(data) || typeof data.result !== 'boolean') {
+    throw new Error(
+      'GREEN-API вернул некорректное подтверждение обработки уведомления.',
+    );
   }
+  // false также возвращается, когда уведомление уже удалено другим клиентом.
+  return data.result;
 }

@@ -17,6 +17,8 @@ export function useNotifications(
     const controller = new AbortController();
     const { signal } = controller;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let unconfirmedReceipt: number | undefined;
+    let unconfirmedAttempts = 0;
     async function poll() {
       let delay = 500;
       try {
@@ -24,7 +26,30 @@ export function useNotifications(
         if (signal.aborted) return;
         if (notification) {
           dispatch({ type: 'notification', notification });
-          await deleteNotification(credentials, notification.receiptId, signal);
+          const confirmed = await deleteNotification(
+            credentials,
+            notification.receiptId,
+            signal,
+          );
+          if (!confirmed) {
+            unconfirmedAttempts =
+              unconfirmedReceipt === notification.receiptId
+                ? unconfirmedAttempts + 1
+                : 1;
+            unconfirmedReceipt = notification.receiptId;
+            if (unconfirmedAttempts >= 3) {
+              throw new Error(
+                'Не удаётся подтвердить обработку входящего уведомления. Закройте другие вкладки приложения с этим инстансом, в том числе localhost, и переподключитесь.',
+              );
+            }
+            // Снова читаем очередь: уже удалённое уведомление больше не придёт.
+          } else {
+            unconfirmedReceipt = undefined;
+            unconfirmedAttempts = 0;
+          }
+        } else {
+          unconfirmedReceipt = undefined;
+          unconfirmedAttempts = 0;
         }
         if (!signal.aborted) {
           setConnected(true);

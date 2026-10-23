@@ -76,6 +76,19 @@ export function Chat({
           value={draft}
           disabled={isSending}
           onChange={(event) => onDraftChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing &&
+              event.nativeEvent.keyCode !== 229
+            ) {
+              event.preventDefault();
+              if (draft.trim() && !isSending) {
+                event.currentTarget.form?.requestSubmit();
+              }
+            }
+          }}
         />
         <button type="submit" disabled={!draft.trim() || isSending}>
           <Icon name="send" />
